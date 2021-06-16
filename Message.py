@@ -1,13 +1,13 @@
 class Message:
-    def __init__(self, id, type, sender, senderID, receiver, delayC, route, delay, target, tag, trace):
-        self.id = "%d_%d" % (senderID, id)
-        self.type = type
-        self.delayC = delayC
-        self.sender = sender
-        self.senderID = senderID
-        self.receiver = receiver
-        self.route = route
-        self.delay = delay
-        self.target = target
-        self.trace = trace
-        self.tag = tag
+    def __init__(self, id, type, sender, route, delay, target, tag, tablePr, sender_estimate):
+        self.id = "%d_%d" % (sender.id, id)
+        self.type = type  # Dummy or Real packet
+        self.sender = sender  # sender object
+        self.route = route  # e.g. [S1, mix1, mix2, mix3, R5]
+        self.delay = delay  # list of delays at 3 nodes
+        self.target = target  # probability of this message being the target message
+        self.tag = tag  # True if this message is a target message
+        self.timeLeft = 0
+        self.nextStopIndex = 1
+        self.tablePr = tablePr #an array of probabilities of the message being the target after each hop
+        self.sender_estimate = sender_estimate

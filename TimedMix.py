@@ -1,193 +1,110 @@
-from util import sample_from_exp_dist
-from operator import itemgetter
-
-import simpy
-import numpy as np
-from numpy import random
-from Message import Message
-
-DEFAULT_SENDING_RATE = 0.1
+from Client import Client
+from random import sample
+from Mix import Mix
+from random import sample, choice
+from Client import Client
+from Mix import Mix
+from numpy.random import exponential
 
 
-class TimedMix:
-    tableL1 = []
-    tableL2 = []
-    tableL3 = []
-    tableID1 = []
-    tableID2 = []
-    tableID3 = []
-    tableS1 = []
-    tableS2 = []
-    tableS3 = []
-    tableM1 = []
-    tableM2 = []
-    tableM3 = []
-    # For DRopped Messages
-    tableMsg = []
-    tableTime = []
-    tableMix = []
+class TimedMix(Mix):
 
-    tableP1 = []
-    tableP2 = []
-    tableP3 = []
-
-    def __init__(self, mix_id, simulation, bandwidth, position, corrupt=False):
-        self.mix_id = mix_id
+    def __init__(self, mix_id, simulation, position,capacity, flushtime,numberTargets, corrupt,prob):
+        super().__init__(mix_id, simulation,position, capacity,numberTargets, corrupt)
         self.pool = []
-        self.poolD = []
-        self.log = []
-        self.ctr = 0
-        self.simulation = simulation
-        self.env = simulation.env
-        self.entropy = 0
-        self.neighbors = []
-        self.bandwidth = bandwidth
-        self.position = position
-        self.corrupt = corrupt
-        self.env2 = simpy.Environment()
+        self.poolD = []  # Used in congestion drop
+        self.flushtime = flushtime
+        self.prob = prob
+        self.neighbors = set()
+        self.env.process(self.flush())
 
-    def add_msg_in_pool(self, msg, dd):
-        event66 = simpy.events.Timeout(self.env2, delay=1)
-        yield event66
-        now = dd + self.env2.now
-        self.ctr += 1
+    def receive_msg(self, msg):
+        if not self.simulation.startAttack:  # if a mix reaches a poolsize of 5 percent higher than the average,
+            var1 = self.simulation.env.now > self.flushtime  # average poolsize
+            if var1:
+                self.env.process(self.simulation.setStableMix(self.id - 1))
+            if all(self.simulation.stableMixL1):
+                for i in range(len(self.simulation.stableMix)):
+                    self.simulation.setStableMix(i)
+        for i in range(0, self.numberTargets):
+            self.Pmix[i] += msg.target[i]
+        for i in range(2):
+            self.PmixItem1[i] += msg.Pitem1[i]
+            self.PmixItem2[i] += msg.Pitem2[i]
+        self.probS1 += msg.Psender1
+        self.probS2 += msg.Psender2
+        if msg.type == 'Real' or msg.type == 'ClientDummy':
+            self.NumberOfrealMessages += 1
+        if msg.tag and self.simulation.printing:
+            print(
+                f'Target message arrived at mix {self.id} at time {self.env.now} and size of the pool{len(self.pool)}')
+        msg.nextStopIndex += 1
+        self.logData(msg, 'Arrive')
         self.pool.append(msg)
-        now = dd
-        tpr = [msg, now]
-        self.log.append(tpr)
-        if self.position == 'Entry':
-            self.setup(self.env2)
-            p2 = simpy.events.Process(self.env2, self.setup(self.env2))
-        else:
-            pass
 
-    def setup(self, env):
+    def flush(self):
         while True:
-            yield self.env2.timeout(10)
-            self.flush(self.env2)
+            yield self.env.timeout(self.flushtime)
+            effectivePoolSize = len(list(filter(lambda x: x.type != 'Malicious Dummy', self.pool)))
 
-    def flush(self, env):
-        i = 0
-        try:
-            d = self.log[i][1]
-            while d < self.env2.now:
-                now = self.env2.now
-                self.tableID1.append(self.log[i][0].id)
-                self.tableL1.append(now)
-                self.tableM1.append(self.log[i][0].route[0].mix_id)
-                if self.position == 'Entry':
-                    if self.simulation.routing == 'hopbyhop':
-                        self.log[i][0].route[1] = random.choice(self.neighbors)
-                    self.log[i][0].route[1].receive(self.log[i][0], now)
-                    p2 = simpy.events.Process(self.env2, self.log[i][0].route[1].receive(self.log[i][0], now))
-                    self.computeProba(self.log[i][0], 0)
-                    self.delete_msg(self.log[i][0])
-                now = self.env2.now
-                self.log.pop(i)
-                d = self.log[i][1]
+            if self.simulation.logging:
+                self.logPool(effectivePoolSize)
 
-        except:
-            RuntimeError
+            for msg in self.pool:
+                self.computeProba(msg, effectivePoolSize)
 
-    def receive(self, msg, delayd):
-        event66 = simpy.events.Timeout(self.env2, delay=1)
-        yield event66
-        self.ctr += 1
-        self.pool.append(msg)
-        now = delayd + self.env2.now
-        Temp = [msg, now]
-        self.log.append(Temp)
-        if self.position == 'Middle':
-            self.setup2(self.env2)
-            p2 = simpy.events.Process(self.env2, self.setup2(self.env2))
-        else:
-            pass
+                if not isinstance(msg.route[msg.nextStopIndex], Client) and msg.route[
+                    msg.nextStopIndex] is None:  # not the last mix
+                    msg.route[msg.nextStopIndex] = sample(self.neighbors, k=1)[0]
 
-    def setup2(self, env):
-        while True:
-            yield self.env2.timeout(10)
-            self.flush2(self.env2)
+                nextStop = msg.route[msg.nextStopIndex]
+                self.logData(msg, 'Leave')
+                self.env.process(self.simulation.attacker.relay(msg, nextStop, self))
 
-    def flush2(self, env):
-        self.log.sort(key=lambda r: r[1])
-        i = 0
-        try:
-            d = self.log[i][1]
-            while d < self.env2.now:
-                now = self.env2.now
-                self.tableID2.append(self.log[i][0].id)
-                self.tableL2.append(now)
-                self.tableM2.append(self.log[i][0].route[1].mix_id)
-                if self.simulation.routing == 'hopbyhop':
-                    self.log[i][0].route[2] = random.choice(self.neighbors)
-                self.log[i][0].route[2].receive2(self.log[i][0], now)
-                p66 = simpy.events.Process(self.env2, self.log[i][0].route[2].receive2(self.log[i][0], now))
-                self.computeProba(self.log[i][0], 1)
-                self.delete_msg(self.log[i][0])
-                self.log.pop(i)
-                d = self.log[i][1]
-        except:
-            RuntimeError
+            self.pool.clear()
+            if not self.simulation.stableMix:  # send dummy if mix has flushed once
+                self.simulation.stableMix = True
 
-    def receive2(self, msg, delayd):
-        event667 = simpy.events.Timeout(self.env2, delay=1)
-        yield event667
-        self.ctr += 1
-        self.pool.append(msg)
-        now = delayd + self.env2.now
-        Temp = [msg, now]
-        self.log.append(Temp)
-        if self.position == 'Exit':
-            self.setup3(self.env2)
-            p25 = simpy.events.Process(self.env2, self.setup3(self.env2))
-        else:
-            pass
+    def computeProba(self, msg, poolsize):
+        if not self.corrupt:
+            if self.uncertainMessage(msg):  # Returns False if the message is a Malicious dummy sent by the attacker and the mix is corrupted
+                if self.layer == self.simulation.n_layers:
+                    for i in range(0, self.numberTargets):
+                        msg.target[i] = self.Pmix[i] / self.NumberOfrealMessages
+                        self.Pmix[i] = self.Pmix[i] - msg.target[i]
 
-    def setup3(self, env):
-        while True:
-            yield self.env2.timeout(10)
-            self.flush3(self.env2)
 
-    def flush3(self, env):
-        self.log.sort(key=lambda v: v[1])
-        i = 0
-        try:
-            d = self.log[i][1]
-            while d < self.env2.now:
-                self.tableID3.append(self.log[i][0].id)
-                self.tableL3.append(self.env2.now)
-                self.tableM3.append(self.log[i][0].route[2].mix_id)
-                self.computeProba(self.log[i][0], 2)
-                if self.pool[i].VectorP[2] is not None:
-                    self.tableP1.append(self.pool[i].id)
-                    self.tableP3.append(self.pool[i].VectorP)
+                    msg.Psender1 = self.probS1 / self.NumberOfrealMessages
+                    msg.Psender2 = self.probS2 / self.NumberOfrealMessages
+                    self.probS1 = self.probS1 - msg.Psender1
+                    self.probS2 = self.probS2 - msg.Psender2
+                    msg.tablePr.append(msg.target[0])
+                    self.NumberOfrealMessages -= 1
+
                 else:
-                    pass
-                self.delete_msg(self.log[i][0])
-                self.log.pop(i)
-                d = self.log[i][1]
+                    for j in range(0, self.numberTargets):
+                        msg.target[j] = self.Pmix[j] / poolsize
+                        msg.tablePr.append(msg.target[j])
+                        self.Pmix[j] = self.Pmix[j] - msg.target[j]
+                    msg.Psender1 = self.probS1 / poolsize
+                    msg.Psender2 = self.probS2 / poolsize
+                    self.probS1 = self.probS1 - msg.Psender1
+                    self.probS2 = self.probS2 - msg.Psender2
 
+    def sendDummies(self):
+        # Should periodically add dummies to pool
+        pass
 
-        except:
-            RuntimeError
+    def uncertainMessage(self, msg):
+        # returns True if this messages adds entropy to the attacker
 
-    def congestion_drop(self, msg, env):
-        tpr = [msg, env.now]
-        self.poolD.append(tpr)
-        self.tableMix.append(self.mix_id)
-        self.tableMsg.append(msg.id)
-        self.tableTime.append(env.now)
-
-    def delete_msg(self, msg):
-        if msg in self.pool:
-            self.pool.remove(msg)
-            self.ctr -= 1
-        else:
-            pass
-
-    def computeProba(self, msg, index):
-        if msg.VectorP[index] is not None:
-            prob = msg.VectorP[index] / self.bandwidth
-            msg.VectorP.append(prob)
-        else:
-            msg.VectorP.append(None)
+        if msg.type == 'Malicious Dummy':
+            return False
+        if msg.type == 'Dummy':  # Iness: Comment this part out if you remember our conversation on 28/08 about
+            # mix to mix dummies and corrupted mixes.
+            if not isinstance(msg.route[msg.nextStopIndex], Client):
+                if msg.route[msg.nextStopIndex].corrupt:
+                    return False  # dummies sent to corrupt mix do not add to the effective poolsize
+                    # these messages will get dropped at the corrupt mix, thus the attacker knows these
+                    # could not have been the target message
+        return True

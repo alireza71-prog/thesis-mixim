@@ -1,102 +1,86 @@
-import random
-
 from PoissonMix import PoissonMix
 from Pool import Pool
 from TimedMix import TimedMix
+from util import OptimizedPositions
+from util import RandomPosition
 import numpy as np
-import weakref
+from random import choice
+import random
 
-
-def get_mixnode(mix_type):
-    if mix_type == 'poisson':
-        return PoissonMix
-    elif mix_type == 'pool':
-        return Pool
-    elif mix_type == 'time':
-        return TimedMix
-    else:
-        raise ValueError(f'Unkown mix_type: {mix_type}')
-
-
-class Network(object):
+class Network:
     MixesAll = []
-    nbr_mixes_network: int = 9
-    position = ['Entry', 'Middle', 'Exit']
-    topology = {}
-    Firstlayer = []
-    SecondLayer = []
-    ThirdLayer = []
-    layers0 = []
-    layers1 = []
-    layers2 = []
+    LayerDict = {}  # 1:[list of mixes in layer 1], 2:[list of mixes in layer 2], ...
 
-    def __init__(self, mix_type, num_layers, nbr_mixes_layers, simulation):
+    def __init__(self, mix_type, num_layers, nbr_mixes_layers,corrupt,UniformCorruption, simulation, capacity, flushThreshold,
+                 flushPercent, topology, flushtime, probabilityDistribution, n_cascades,LinkDummies, RateDummies, Network_template, numberTargets):
         self.simulation = simulation
         self.num_layers = num_layers
-        self.nbr_mixes_layers = nbr_mixes_layers
+        self.mix_type = mix_type
+        self.mixesPerLayer = nbr_mixes_layers
+        self.corrupt = corrupt
+        self.UniformCorruption= UniformCorruption
         self.env = simulation.env
-        v = [True, False]
-        nbr = int(random.uniform(0,2))
-        nbr2 = random.uniform(3,5)
-        for i in range(self.nbr_mixes_network // 3):
-            corr = np.random.choice(v, p=[0.3, 0.7])
-            bandwidth = 50
-            if i == 0 or i == 1:
-                m = get_mixnode(mix_type)(i, simulation, bandwidth, 'Entry', False)
-            else:
-                m = get_mixnode(mix_type)(i, simulation, bandwidth, 'Entry', False)
-            self.MixesAll.append(m)
-        for j in range(self.nbr_mixes_network // 3, (self.nbr_mixes_network // 3) * 2):
-            corr = np.random.choice(v, p=[0.3, 0.7])
-            bandwidth = 50 # random.randint(10, 20)
-            if j == 3 or j == 4 :
-                m = get_mixnode(mix_type)(j, simulation, bandwidth, 'Middle', False)
-            else:
-                m = get_mixnode(mix_type)(j, simulation, bandwidth, 'Middle', False)
+        self.capacity = capacity
+        self.bandwidth = flushThreshold
+        self.flushPercent = flushPercent
+        self.topology = topology
+        self.flushtime = flushtime
+        self.n_cascades = n_cascades
+        self.LinkDummies = LinkDummies
+        self.RateDummies  = RateDummies
+        self.probabilityDistribution = probabilityDistribution
+        self.Network_template = Network_template
+        self.numberTargets = numberTargets
+        self.ListCascades = []
+        self.createNetwork()
 
-            self.MixesAll.append(m)
-        for k in range(((self.nbr_mixes_network // 3) * 2), ((self.nbr_mixes_network // 3) * 3)):
-            corr = np.random.choice(v, p=[0.3, 0.7])
-            bandwidth = 50  # random.randint(10, 20)
-            if k == 6 or k == 7:
-                m = get_mixnode(mix_type)(k, simulation, bandwidth, 'Exit', False)
-            else:
-                m = get_mixnode(mix_type)(k, simulation, bandwidth, 'Exit', False)
+    def createNetwork(self):
+        mixnb = 1
+        self.MixesAll = set()
+        if self.topology == 'stratified':
+            Nbr_Corruption=0
+            for layer in range(1, self.num_layers + 1):
+                c = 0
+                self.LayerDict[layer] = []
+                for _ in range(self.mixesPerLayer):
+                    if self.UniformCorruption:
+                        if c < self.corrupt/self.simulation.n_layers:
+                            varCorrupt = True
+                            c += 1
+                        else:
+                            varCorrupt = False
+                    else:
+                        if Nbr_Corruption < self.corrupt:
+                            varCorrupt = random.choice([True, False])
+                            if varCorrupt:
+                                Nbr_Corruption+=1
+                        else:
+                            varCorrupt = False
+                    mix = self.get_mixnode(self.mix_type, mixnb, layer, self.numberTargets, varCorrupt,
+                                           self.probabilityDistribution[layer - 1][_])
+                    self.MixesAll.add(mix)
+                    self.LayerDict[layer] += [mix]
+                    mixnb += 1
+            for mix in self.MixesAll:
+                if mix.layer + 1 in self.LayerDict:  # last mix doesn't need neighbors
+                    mix.neighbors = self.LayerDict[mix.layer + 1]
+                if mix.layer == self.simulation.n_layers:
+                    mix.neighbors = self.LayerDict[1]
 
-            self.MixesAll.append(m)
+    def get_mixnode(self, mix_type, id, position, numberTargets, corrupt, probability):
+        if mix_type == 'poisson':
+            arr = self.capacity
+            capacity = arr[position - 1][id - 1 - (position - 1) * self.simulation.n_mixes_per_layer]
+            return PoissonMix(id, self.simulation, position, capacity,self.LinkDummies, self.RateDummies, numberTargets, corrupt, probability)
+        elif mix_type == 'pool':
+            arr = self.capacity
+            #capacity = arr[position - 1][id - 1 - (position - 1) * self.simulation.n_mixes_per_layer]
+            return Pool(id, self.simulation,  position,100000, self.bandwidth, self.flushPercent, numberTargets, corrupt, probability)
+        elif mix_type == 'time':
+            arr = self.capacity
+            capacity = arr[position - 1][id - 1 - (position - 1) * self.simulation.n_mixes_per_layer]
+            return TimedMix(id, self.simulation,  position,capacity,self.flushtime,numberTargets,corrupt, probability)
 
-        for obj in self.MixesAll:
-            if obj.position == 'Entry':
-                self.Firstlayer.append(obj)
-                tmp = [obj.mix_id, obj.bandwidth, obj.corrupt]
-                self.layers0.append(tmp)
-            elif obj.position == 'Middle':
-                self.SecondLayer.append(obj)
-                tmp = [obj.mix_id, obj.bandwidth, obj.corrupt]
-                self.layers1.append(tmp)
-            else:
-                self.ThirdLayer.append(obj)
-                tmp = [obj.mix_id, obj.bandwidth, obj.corrupt]
-                self.layers2.append(tmp)
-        if simulation.routing == 'hopbyhop' or simulation.routing == 'source':
-            for obj in self.MixesAll:
-                if obj.position == 'Entry':
-                    obj.neighbors = self.SecondLayer
-                elif obj.position == 'Middle':
-                    obj.neighbors = self.ThirdLayer
-                else:
-                    pass
-        else:
-            pass
+    def odd(self, number):
+        return number % 2 == 1
 
-        layers = [self.Firstlayer, self.SecondLayer, self.ThirdLayer]
-        print("Layer 0", self.layers0)
-        print("Layer 1", self.layers1)
-        print("Layer 2", self.layers2)
-        for obj2 in self.MixesAll:
-            if obj2.position == 'Entry':
-                self.topology[obj2] = layers[1]
-            elif obj2.position == 'Middle':
-                self.topology[obj2] = layers[2]
-            else:
-                pass

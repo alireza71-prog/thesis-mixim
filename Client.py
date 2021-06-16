@@ -1,159 +1,149 @@
-from util import sample_from_exp_dist
-import numpy as np
-import random
-
-import simpy
-from numpy.random import choice
+from random import choice, sample
 from Message import Message
-import pandas as pd
+from numpy.random import exponential
+import numpy as np
+from Log import Log
+import random
+from array import array
 
-tableID = []
-tableS = []
-tableID2 = []
-tableS2 = []
-tableRT = []
-tableC = []
-tableR = []
-tableD = []
-tableT = []
-tableM1 = []
-var = True
-
+ProbabilitiesEntropy = []
+delayTable = []  # total latency of a message
+tableAverageDelay = []  # IDs of message received
+tableType = []  # IDs of message received
+targetProbability = 0  # Probability of taget message when it arrives at its destination
 
 class Client:
-    ClientList = ["Client 2", "Client 5", "Client 6", "Client10"]
-
-    def __init__(self, simulation, ide, layer1, layer2, layer3, rate, nbr_msgs):
-        global var
-        self.ide = ide
+    def __init__(self, simulation, id, layerDict, rateC, mu, probabilityDistribution, numberTargets, ClientDummy, Log):
+        self.id = id
         self.env = simulation.env
-        self.envC = simpy.Environment()
-        self.simulation = simulation
-        self.layer1 = layer1
-        self.layer2 = layer2
-        self.layer3 = layer3
+        self.simulation = simulation  # simulation object
+        self.layerDict = layerDict
         self.class_ends = self.env.event()
-        self.buffer = []
-        self.log = []
-        self.rateS = rate
-        self.nbr_msgs = nbr_msgs
-        self.tableID = tableID
-        self.tableS = tableS  # sender table
-        self.tableID2 = tableID2 
-        self.tableS2 = tableS2
-        self.tableRT = tableRT
-        self.tableC = tableC
-        self.tableR = tableR
-        self.tableD = tableD
-        self.tableT = tableT
-        self.tableM1 = tableM1
-        self.type = ['Real', 'Dummy']
-        self.rateM = 0.1
+        self.mu = mu  # Avg delay: for delays at the poisson mixes
+        self.probabilityDistribution = probabilityDistribution
+        self.otherClients = set()
+        self.messageIDs = 1
+        self.delay = delayTable
 
-        for i in range(self.nbr_msgs):
-            if i == int(self.nbr_msgs/2) and self.ide == simulation.n_clients //2 and var == True:
-                target = 1
-                trace = []
-                tag = True
-                delayC = sample_from_exp_dist(self.rateS)
-                delay1 = sample_from_exp_dist(self.rateM)
-                delay2 = sample_from_exp_dist(self.rateM)
-                delay3 = sample_from_exp_dist(self.rateM)
-                delay = [delay1, delay2, delay3]
-                elements1 = [self.layer1[0], self.layer1[1], self.layer1[2]]
-                elements2 = [self.layer2[0], self.layer2[1], self.layer2[2]]
-                weights = [0.1, 0.1, 0.8]
-                First_node = random.choice(self.layer1)
-                Second_node = random.choice(self.layer2) #np.random.choice(elements2, p=weights)
-                Third_node = random.choice(self.layer3)
-                if simulation.routing == 'source':
-                    tmp_route = [First_node, Second_node, Third_node]
-                    Tmp = [tmp_route[0].mix_id, tmp_route[1].mix_id, tmp_route[2].mix_id]
+        self.tableAverageDelay = tableAverageDelay
+        self.rateC = rateC
+        self.allMixes = []
+        self.numbertargets=numberTargets
+        self.ClientDummy = ClientDummy
+        self.log = Log
+        if self.simulation.topology == 'stratified':
+            for layer in range(1, len(self.layerDict) + 1):
+                self.allMixes += self.layerDict[layer]
+
+
+        self.env.process(self.sendMessages('Real', self.rateC))
+        if self.ClientDummy is not None:
+            self.env.process(self.sendMessages('ClientDummy', self.ClientDummy))
+
+    def createMessage(self, Msgtype, rate):
+        np.random.seed()
+        delayC = exponential(rate)
+        tmp_route = [self]
+        Tmp = [self.id]
+        delay = [delayC]
+        tablePr= []
+        target = []
+
+        for i in range(0, self.numbertargets):
+            target.append(float(0.0))
+        for layer in range(1, self.simulation.n_layers+1):
+            delay_per_mix = exponential(self.mu)
+            delay.append(delay_per_mix)
+            if self.simulation.routing == 'source' and self.simulation.topology == 'stratified'\
+                    or (self.simulation.routing == 'hopbyhop' and self.simulation.topology == 'stratified' and layer == 1):
+                if self.simulation.n_layers ==1 and self.simulation.n_mixes_per_layer == 1:
+                    node = self.layerDict[1][0]
+                    tmp_route.append(node)
+                    Tmp.append(node.id)
                 else:
-                    tmp_route = [First_node, None, None]
-                    Tmp = [tmp_route[0].mix_id, None, None]
+                    node = np.random.choice(self.layerDict[layer], p=self.probabilityDistribution[layer - 1])
+                    tmp_route.append(node)
+                    Tmp.append(node.id)
 
-                tableR.append(Tmp)
-                t = random.choice(self.type)
-                msg = Message(i + 1, t, self, self.ide, random.choice(self.ClientList), delayC, tmp_route, delay,
-                              target, tag,
-                              trace)
+            elif self.simulation.routing == 'source' and self.simulation.topology == 'freeroute'\
+                    or (self.simulation.routing == 'hopbyhop' and self.simulation.topology == 'freeroute' and layer == 1):
 
-                self.buffer.append(msg)
-                tableID.append(msg.id)
-                tableC.append(delayC)
-                tableD.append(delay)
-                tableT.append(t)
-                var = False
-                print("Client %d Created a target %s of probability %f " % (self.ide, msg.id, target))
-                print(Tmp)
+                node = choice(self.allMixes)
+                while node in tmp_route:
+                    node = choice(self.allMixes)
+                tmp_route.append(node)
+                Tmp.append(node.id)
+
+            elif self.simulation.routing == 'hopbyhop' and layer != 1:
+                tmp_route.append(None)
+                Tmp.append(None)
+        delay += [0]
+        receiver = sample(self.otherClients, k=1)[0]
+        tmp_route += [receiver]
+        Tmp += [receiver.id]
+        if self.simulation.startAttack:
+            sampling = True
+            if self.id == 1:
+                sender_estimate = [1.0,0.0,0.0]
+            elif self.id == 2 :
+                sender_estimate = [0.0,1.0,0.0]
             else:
-                tag = False
-                delayC = sample_from_exp_dist(self.rateS)
-                delay1 = sample_from_exp_dist(self.rateM)
-                delay2 = sample_from_exp_dist(self.rateM)
-                delay3 = sample_from_exp_dist(self.rateM)
-                delay = [delay1, delay2, delay3]
-                elements1 = [self.layer1[0], self.layer1[1], self.layer1[2]]
-                elements2 = [self.layer2[0], self.layer2[1], self.layer2[2]]
-                weights = [0.1, 0.1, 0.8]
-                First_node = random.choice(self.layer1) #np.random.choice(elements1, p=weights)
-                Second_node = random.choice(self.layer2) #np.random.choice(elements2, p=weights)
-                Third_node = random.choice(self.layer3)
-                if simulation.routing == 'source':
-                    tmp_route = [First_node, Second_node, Third_node]
-                    Tmp = [tmp_route[0].mix_id, tmp_route[1].mix_id, tmp_route[2].mix_id]
+                sender_estimate = [0.0,0.0,1.0]
+        else:
+            sender_estimate = [0.0, 0.0, 1.0]
+            sampling = False
+
+        msg = Message(self.messageIDs, Msgtype, self, tmp_route, delay, target,False, tablePr, sender_estimate)
+        msg.sampling =sampling
+        if self.messageIDs == 1 and self.id ==1:
+            for i in range(len(self.probabilityDistribution)):
+                if self.simulation.printing:
+                    print("Weights Layer %d %s"%(i, self.probabilityDistribution))
                 else:
-                    tmp_route = [First_node, None, None]
-                    Tmp = [tmp_route[0].mix_id, None, None]
+                    pass
+        self.messageIDs += 1
+        return msg, delayC
 
-                tableR.append(Tmp)
-                t = random.choice(self.type)
-                msg = Message(i + 1, t, self, self.ide, random.choice(self.ClientList), delayC, tmp_route, delay, 0,
-                              tag,
-                              None)
-                self.buffer.append(msg)
-                tableID.append(msg.id)
-                tableC.append(delayC)
-                tableD.append(delay)
-                tableT.append(t)
 
-    def send_msg(self, env):
-        for msg in self.buffer:
-            event = simpy.events.Timeout(env, delay=msg.delayC)
-            yield event
-            self.tableID2.append(msg.id)
-            now = env.now
-            self.tableRT.append(now)
-            tmp1 = [msg.id, now, False]
-            self.log.append(tmp1)
-            #self.waitAck(msg, now)
-            #p22 = simpy.events.Process(self.env, self.waitAck(msg, now))
-            if self.simulation.mix_type == 'time':
-                msg.route[0].add_msg_in_pool(msg, now)
-                p = simpy.events.Process(env, msg.route[0].add_msg_in_pool(msg, now))
+
+    def receive_msg(self, msg):
+        # if msg.type != 'Malicious Dummy':
+            if msg.sender.id ==1 or msg.sender.id == 2:
+                self.log.MessagesLD(msg)
+            self.log.ReceivedMessage(msg)
+            if self.simulation.mix_type == 'poisson':
+                self.delay.append(self.env.now - msg.timeLeft)
+            elif self.simulation.mix_type == 'time':
+                self.delay.append(self.env.now - msg.timeLeft)
             else:
-                msg.route[0].add_msg_in_pool(msg, env)
-                p = simpy.events.Process(env, msg.route[0].add_msg_in_pool(msg, env))
+                self.delay.append(self.env.now - msg.timeLeft)
+            d = self.env.now - msg.timeLeft
 
-    def receiveAck(self, msg):
-        for obj in self.log:
-            if obj[0] == msg.id:
-                obj[2] = True
 
-    def waitAck(self, msg, now):
-        event66 = simpy.events.Timeout(self.env, delay=now + 50)
-        yield event66
-        for obj in self.log:
-            if obj[0] == msg.id:
-                if not obj[2]:
-                    print("Message %s was sent at %f and now is %f Didnt go through" % (msg.id, now, self.env.now))
-        """    def printForEncC(self,msg, now, envv):
-        yield self.envC.timeout(now + 50)
-        for obj in self.log:
-            if obj[0] == msg.id:
-                if obj[2] == False:
-                    print("CCMessage %s was sent at %f and now is %f Didnt go through" % (msg.id, now, self.envC.now))
+            self.tableAverageDelay.append(d)
+            if msg.tag:
+                global targetProbability
+                self.simulation.TargetMessageEnd = True
+                targetProbability = msg.target
+                if self.simulation.printing:
+                    print(f'Target message arrived at destination Client at time {self.env.now}')
+            if msg.type == 'Real' or msg.type == 'ClientDummy':
+                msg.route[0].receiveAck(msg)
 
-"""
+    def sendMessages(self, msgtype, rate):
+        #if (self.simulation.env.now > 900) or (self.simulation.env.now < 900 and (self.id != 1 or self.id != 2)):
+            while True:
+                msg, delay = self.createMessage(msgtype, rate)
+                yield self.env.timeout(delay)
+                msg.timeLeft = self.env.now
+                self.log.SentMessage(msg)
+                self.env.process(self.simulation.attacker.relay(msg, msg.route[1], self))
 
+    def receiveAck(self, msg):  # Message received
+        pass
+
+    def __str__(self):
+        return 'Client id: {}'.format(self.id)
+
+    def __repr__(self):
+        return self.__str__()
