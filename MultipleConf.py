@@ -31,7 +31,7 @@ def main(rate):
     timeout = int(config['MIXING']['timeout'])
 
     # Threat Model
-    corrupt_mixes = 3 # * (n_mix_per_layer*n_layer) # int(config['THREATMODEL']['corrupt_mixes'])
+    corrupt_mixes = 0 # * (n_mix_per_layer*n_layer) # int(config['THREATMODEL']['corrupt_mixes'])
     balanced_corruption = bool(config['THREATMODEL']['balanced_corruption'])
     #balanced_corruption = [16/40, 16/40, 1/40,1/40,1/40,1/40,1/40,1/40,1/40,1/40]
     n_cascade = 2
@@ -48,7 +48,7 @@ def main(rate):
     else:
         error = 0.05
         capacitiesOrganized = PositionErrorRate(error)
-    weight_l1 = [16/40, 16/40, 8/40,1/40,1/40,1/40,1/40,1/40,1/40,1/40]
+    weight_l1 = [1/3,1/3,1/3]
     weights = [] #Weights(n_layer, n_mix_per_layer)
     weights.append(weight_l1)
     weights.append(weight_l1)
