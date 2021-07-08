@@ -16,7 +16,7 @@ import pickle
 
 import random
 import uuid
-
+from util import XRD_New
 from util import Capacity
 
 import math
@@ -73,6 +73,8 @@ class Simulation(object):
 
         self.setupClients(self.probabilityMixes, self.numberTargets, self.ClientDummy, self.Log)
         self.stableMix = [False for i in range(self.n_mixes_per_layer*self.n_layers)]  # only start attack after mixes are stable
+        self.stableChains = [False for i in range(1,1+6)]  # only start attack after chains are stable
+        print("stable chains", self.stableChains[4])
         self.stableMixL1 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
         self.stableMixL2 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
         self.stableMixL3 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
@@ -95,16 +97,39 @@ class Simulation(object):
         #    yield self.env.timeout(3)
          #   self.stableMix = [True for i in range(self.n_mixes_per_layer * self.n_layers)]  # only start attack after mixes are stable
           #  self.startAttack = True
+    def setStableChain(self, position):
+        if self.mix_type =='pool':
+            yield self.env.timeout(10)
+            self.startAttack = True
+        self.stableChains[position - 1] = True
+        if all(self.stableChains):
+            yield self.env.timeout(2)
+            self.startAttack = True
+        #else:
+        #    yield self.env.timeout(3)
+         #   self.stableMix = [True for i in range(self.n_mixes_per_layer * self.n_layers)]  # only start attack after mixes are stable
+          #  self.startAttack = True
 
     def setupClients(self, probabilityDistribution, numberTargets, ClientDummy, Log):
-
-        for client_no in range(self.n_clients):
-            client = Client.Client(self, client_no, self.network.LayerDict, self.rate_client, self.mu,
+        if self.topology == 'stratified':
+            for client_no in range(self.n_clients):
+                client = Client.Client(self, client_no,self.network.LayerDict , self.rate_client, self.mu,
                                    probabilityDistribution, numberTargets, ClientDummy, Log)
-            self.clientsSet.add(client)
+                self.clientsSet.add(client)
 
-        for client in self.clientsSet:
-            client.otherClients = self.clientsSet - {client}
+            for client in self.clientsSet:
+                client.otherClients = self.clientsSet - {client}
+        elif self.topology == 'XRD':
+            groups_lists = XRD_New(self.network.ListCascades)
+            for n_client in range(self.n_clients):
+                g = random.choice(groups_lists)
+                client = Client.Client(self, n_client, g, self.rate_client, self.mu,
+                                       probabilityDistribution, numberTargets, ClientDummy, Log)
+                self.clientsSet.add(client)
+
+            for client in self.clientsSet:
+                client.otherClients = self.clientsSet - {client}
+
     def getUnlinkability(self, est_senderA, est_senderB, realSenderLabel):
         epsilon = []
         dlts = 0

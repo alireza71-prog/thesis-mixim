@@ -31,7 +31,8 @@ class Network:
         self.probabilityDistribution = probabilityDistribution
         self.Network_template = Network_template
         self.numberTargets = numberTargets
-        self.ListCascades = []
+        self.ListCascades = {}
+        self.n_cascades = 6
         self.createNetwork()
 
     def createNetwork(self):
@@ -66,19 +67,32 @@ class Network:
                     mix.neighbors = self.LayerDict[mix.layer + 1]
                 if mix.layer == self.simulation.n_layers:
                     mix.neighbors = self.LayerDict[1]
+        elif self.topology == 'XRD':
+            mixnb = 1
+            for n in range(1,1+self.n_cascades):
+                cascade = []
+                for m in range(self.num_layers):
+                    varCorrupt = False
+                    mix = self.get_mixnode(self.mix_type, mixnb, m, self.numberTargets, varCorrupt,
+                                       1/self.n_cascades)
+                    mix.n_chain = n
+                    self.MixesAll.add(mix)
+                    mixnb += 1
+                    cascade.append(mix)
+                self.ListCascades[n] = cascade
 
     def get_mixnode(self, mix_type, id, position, numberTargets, corrupt, probability):
-        if mix_type == 'poisson':
+        capacity = 1000
+        if self.topology == 'stratified':
             arr = self.capacity
             capacity = arr[position - 1][id - 1 - (position - 1) * self.simulation.n_mixes_per_layer]
+        elif self.topology == 'XRD':
+            capacity = 10000
+        if mix_type == 'poisson':
             return PoissonMix(id, self.simulation, position, capacity,self.LinkDummies, self.RateDummies, numberTargets, corrupt, probability)
         elif mix_type == 'pool':
-            arr = self.capacity
-            #capacity = arr[position - 1][id - 1 - (position - 1) * self.simulation.n_mixes_per_layer]
-            return Pool(id, self.simulation,  position,100000, self.bandwidth, self.flushPercent, numberTargets, corrupt, probability)
+            return Pool(id, self.simulation,  position,capacity, self.bandwidth, self.flushPercent, numberTargets, corrupt, probability)
         elif mix_type == 'time':
-            arr = self.capacity
-            capacity = arr[position - 1][id - 1 - (position - 1) * self.simulation.n_mixes_per_layer]
             return TimedMix(id, self.simulation,  position,capacity,self.flushtime,numberTargets,corrupt, probability)
 
     def odd(self, number):

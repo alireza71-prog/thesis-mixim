@@ -28,18 +28,28 @@ class PoissonMix(Mix):
             clients = self.simulation.n_clients
             lambdaClient = self.simulation.rate_client
             n = self.simulation.n_mixes_per_layer
-            var1 = len(self.pool) >= ((clients * lambdaClient / n) *self.simulation.mu) * self.prob  # average poolsize
-            if var1:
-                self.env.process(self.simulation.setStableMix(self.id - 1))
-            if all(self.simulation.stableMixL1):
-                for i in range(len(self.simulation.stableMix)):
-                    self.simulation.setStableMix(i)
+            var1 = len(self.pool) >= ((clients * lambdaClient / n) * self.simulation.mu) * self.prob
+            if self.simulation.topology == 'stratified':
+                  # average poolsize
+                if var1:
+                    self.env.process(self.simulation.setStableMix(self.id - 1))
+                if all(self.simulation.stableMixL1):
+                    for i in range(len(self.simulation.stableMix)):
+                        self.simulation.setStableMix(i)
+            elif self.simulation.topology == 'XRD':
+                if var1:
+                    self.env.process(self.simulation.setStableChain(self.n_chain))
+                if all(self.simulation.stableChains):
+                    for i in range(len(self.simulation.stableChains)):
+                        self.simulation.setStableChain(i)
+
         if len(self.pool) < self.capacity:
+
             for i in range(0, self.numberTargets):
                 self.Pmix[i] += msg.target[i]
             self.sender_estimate = [x+y for x,y in zip(self.sender_estimate, msg.sender_estimate)]
             if msg.tag and self.simulation.printing:
-                print(f'Target message arrived at mix {self.id} at time {self.env.now} and Number of real messafes{len(self.pool)} and number of dummies{len(self.pool_dummies)} nbr{self.NumberOfDummies}')
+                print(f'Target message arrived at mix {self.id} at time {self.env.now} and Number of real messages{len(self.pool)} and number of dummies{len(self.pool_dummies)}')
             msg.nextStopIndex += 1
             if msg.route[msg.nextStopIndex] == None:
                 msg.route[msg.nextStopIndex] = random.choice(self.neighbors)

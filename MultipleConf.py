@@ -22,13 +22,13 @@ def main(rate):
     lambda_c =  float(config['DEFAULT']['lambda_c'])
     #For Stratified Topology
     n_layer = 3
-    n_mix_per_layer = 3  #int(config['TOPOLOGY']['l_mixes_per_layer'])
+    n_mix_per_layer = 6  #int(config['TOPOLOGY']['l_mixes_per_layer'])
     total_Number_Mixes= n_layer * n_mix_per_layer
 
     mu = 1 #(int(config['TOPOLOGY']['E2E']) - (n_layer + 1)*0.05)/n_layer
     threshold = int(config['MIXING']['threshold'])
-    pool_size = float(config['MIXING']['pool_size'])
-    timeout = int(config['MIXING']['timeout'])
+    pool_size = float(config['MIXING']['flush_percent'])
+    timeout = float(config['MIXING']['timeout'])
 
     # Threat Model
     corrupt_mixes = 0 # * (n_mix_per_layer*n_layer) # int(config['THREATMODEL']['corrupt_mixes'])
@@ -48,16 +48,15 @@ def main(rate):
     else:
         error = 0.05
         capacitiesOrganized = PositionErrorRate(error)
-    weight_l1 = [1/3,1/3,1/3]
-    weights = [] #Weights(n_layer, n_mix_per_layer)
-    weights.append(weight_l1)
-    weights.append(weight_l1)
-    weights.append(weight_l1)
-    print(weights)
+    weights = Weights(n_layer, n_mix_per_layer)
+    # weight_l1 = [1/3,1/3,1/3]
+    # weights.append(weight_l1)
+    # weights.append(weight_l1)
+    # weights.append(weight_l1)
 
-    simulation = Simulation(mix_type=mix_type, simDuration=100, rate_client=1/lambda_c, mu=mu, logging=True,
+    simulation = Simulation(mix_type=mix_type, simDuration=50, rate_client=1/lambda_c, mu=mu, logging=True,
                             topology=topology, n_clients=n_clients, flushPercent=pool_size, printing=True, flushtime=timeout, capacity=capacitiesOrganized, bandwidth=threshold, routing=routing, n_layers=n_layer,
-                            n_mixes_per_layer=n_mix_per_layer,corrupt= corrupt_mixes,UniformCorruption= balanced_corruption,probabilityMixes=weights,nbr_cascacdes = n_cascade, ClientDummy=None, LinkDummies = link_dummies,RateDummies = 1/1.5,
+                            n_mixes_per_layer=n_mix_per_layer,corrupt= corrupt_mixes,UniformCorruption= balanced_corruption,probabilityMixes=weights,nbr_cascacdes = n_cascade, ClientDummy=None, LinkDummies = link_dummies,RateDummies = None,
                             Network_template=None)
 
     now = time.time()

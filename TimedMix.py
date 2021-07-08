@@ -28,27 +28,18 @@ class TimedMix(Mix):
                     self.simulation.setStableMix(i)
         for i in range(0, self.numberTargets):
             self.Pmix[i] += msg.target[i]
-        for i in range(2):
-            self.PmixItem1[i] += msg.Pitem1[i]
-            self.PmixItem2[i] += msg.Pitem2[i]
-        self.probS1 += msg.Psender1
-        self.probS2 += msg.Psender2
         if msg.type == 'Real' or msg.type == 'ClientDummy':
             self.NumberOfrealMessages += 1
         if msg.tag and self.simulation.printing:
             print(
                 f'Target message arrived at mix {self.id} at time {self.env.now} and size of the pool{len(self.pool)}')
         msg.nextStopIndex += 1
-        self.logData(msg, 'Arrive')
         self.pool.append(msg)
 
     def flush(self):
         while True:
             yield self.env.timeout(self.flushtime)
             effectivePoolSize = len(list(filter(lambda x: x.type != 'Malicious Dummy', self.pool)))
-
-            if self.simulation.logging:
-                self.logPool(effectivePoolSize)
 
             for msg in self.pool:
                 self.computeProba(msg, effectivePoolSize)
@@ -58,7 +49,6 @@ class TimedMix(Mix):
                     msg.route[msg.nextStopIndex] = sample(self.neighbors, k=1)[0]
 
                 nextStop = msg.route[msg.nextStopIndex]
-                self.logData(msg, 'Leave')
                 self.env.process(self.simulation.attacker.relay(msg, nextStop, self))
 
             self.pool.clear()
@@ -72,12 +62,6 @@ class TimedMix(Mix):
                     for i in range(0, self.numberTargets):
                         msg.target[i] = self.Pmix[i] / self.NumberOfrealMessages
                         self.Pmix[i] = self.Pmix[i] - msg.target[i]
-
-
-                    msg.Psender1 = self.probS1 / self.NumberOfrealMessages
-                    msg.Psender2 = self.probS2 / self.NumberOfrealMessages
-                    self.probS1 = self.probS1 - msg.Psender1
-                    self.probS2 = self.probS2 - msg.Psender2
                     msg.tablePr.append(msg.target[0])
                     self.NumberOfrealMessages -= 1
 
@@ -86,10 +70,6 @@ class TimedMix(Mix):
                         msg.target[j] = self.Pmix[j] / poolsize
                         msg.tablePr.append(msg.target[j])
                         self.Pmix[j] = self.Pmix[j] - msg.target[j]
-                    msg.Psender1 = self.probS1 / poolsize
-                    msg.Psender2 = self.probS2 / poolsize
-                    self.probS1 = self.probS1 - msg.Psender1
-                    self.probS2 = self.probS2 - msg.Psender2
 
     def sendDummies(self):
         # Should periodically add dummies to pool
