@@ -73,13 +73,15 @@ class Network:
                 cascade = []
                 for m in range(self.num_layers):
                     varCorrupt = False
-                    mix = self.get_mixnode(self.mix_type, mixnb, m, self.numberTargets, varCorrupt,
+                    mix = self.get_mixnode(self.mix_type, mixnb, m+1, self.numberTargets, varCorrupt,
                                        1/self.n_cascades)
                     mix.n_chain = n
                     self.MixesAll.add(mix)
                     mixnb += 1
                     cascade.append(mix)
                 self.ListCascades[n] = cascade
+            for n, list in self.ListCascades.items():
+                print('Chain number',n, ':', list)
 
     def get_mixnode(self, mix_type, id, position, numberTargets, corrupt, probability):
         capacity = 1000

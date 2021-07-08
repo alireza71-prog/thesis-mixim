@@ -2,7 +2,7 @@
 class Log:
     def __init__(self):
         self.sent_messages = {"MessageID": [], "MessageType": [], "MessageTimeLeft" :[], "MessageDelay": [], "MessageRoute" :[]}
-        self.received_messages = {"MessageID": [], "MessageType": [], "MessageTimeLeft" :[], "MessageDelay": [], "MessageRoute" :[],"MessageTarget" : [],"PrS1": [], "PrS2": [], "RealSender": [] }
+        self.received_messages = {"MessageID": [], "MessageType": [], "MessageTimeLeft" :[],"MessageTimeReceived":[], "MessageDelay": [], "MessageRoute" :[],"MessageTarget" : [],"PrS1": [], "PrS2": [], "RealSender": [] }
         self.dummy_messages = {"DroppingNode":[],"DummyID": [], "DummyType": [], "DummyTimeLeft" :[], "DummyDelay": [], "DummyRoute" :[], "DummyPr":[]}
         self.mix_data = {"MessageID": [], "MessageType": [],"MessageTag": [], "MessageTarget": [],"MessageTime_L": [], "MessageTime_R": [], "Len": []}
         self.messages_indis = {"MessageID": [],"PrS1": [], "PrS2": [], "RealSender": [], "Sampling": []}
@@ -27,6 +27,7 @@ class Log:
         self.received_messages["MessageID"].append(msg.id)
         self.received_messages["MessageType"].append(msg.type)
         self.received_messages["MessageTimeLeft"].append(msg.timeLeft)
+        self.received_messages["MessageTimeReceived"].append(msg.timeReceived)
         self.received_messages["MessageDelay"].append(msg.delay)
         self.received_messages["MessageRoute"].append(msg.route)
         self.received_messages["MessageTarget"].append(msg.target)

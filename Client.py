@@ -79,6 +79,9 @@ class Client:
                 Tmp.append(None)
             elif self.simulation.routing == 'source' and self.simulation.topology == 'XRD':
                 chain = random.choice(self.set_chains)
+                print("chain", chain)
+                tmp_route = [self]
+                Tmp = [self.id]
                 for node in chain:
                     tmp_route.append(node)
                     Tmp.append((node.id))
@@ -115,6 +118,7 @@ class Client:
         # if msg.type != 'Malicious Dummy':
             if msg.sender.id ==1 or msg.sender.id == 2:
                 self.log.MessagesLD(msg)
+            msg.timeReceived = self.env.now
             self.log.ReceivedMessage(msg)
             if self.simulation.mix_type == 'poisson':
                 self.delay.append(self.env.now - msg.timeLeft)

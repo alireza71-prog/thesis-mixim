@@ -25,7 +25,7 @@ def main(rate):
     n_mix_per_layer = 6  #int(config['TOPOLOGY']['l_mixes_per_layer'])
     total_Number_Mixes= n_layer * n_mix_per_layer
 
-    mu = 1 #(int(config['TOPOLOGY']['E2E']) - (n_layer + 1)*0.05)/n_layer
+    mu = 1/3 #(int(config['TOPOLOGY']['E2E']) - (n_layer + 1)*0.05)/n_layer
     threshold = int(config['MIXING']['threshold'])
     pool_size = float(config['MIXING']['flush_percent'])
     timeout = float(config['MIXING']['timeout'])
@@ -54,7 +54,7 @@ def main(rate):
     # weights.append(weight_l1)
     # weights.append(weight_l1)
 
-    simulation = Simulation(mix_type=mix_type, simDuration=50, rate_client=1/lambda_c, mu=mu, logging=True,
+    simulation = Simulation(mix_type=mix_type, simDuration=10, rate_client=1/lambda_c, mu=mu, logging=True,
                             topology=topology, n_clients=n_clients, flushPercent=pool_size, printing=True, flushtime=timeout, capacity=capacitiesOrganized, bandwidth=threshold, routing=routing, n_layers=n_layer,
                             n_mixes_per_layer=n_mix_per_layer,corrupt= corrupt_mixes,UniformCorruption= balanced_corruption,probabilityMixes=weights,nbr_cascacdes = n_cascade, ClientDummy=None, LinkDummies = link_dummies,RateDummies = None,
                             Network_template=None)

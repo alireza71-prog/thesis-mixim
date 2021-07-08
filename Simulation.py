@@ -47,6 +47,7 @@ class Simulation(object):
         self.rate_client = rate_client  # average delay between messages being sent from client
         self.flushthreshold = bandwidth
         self.mu = mu  # average delay at poisson mixes
+        print("self.mu", self.mu)
         self.n_layers = n_layers
         self.n_mixes_per_layer = n_mixes_per_layer
         self.corrupt = corrupt
@@ -74,7 +75,6 @@ class Simulation(object):
         self.setupClients(self.probabilityMixes, self.numberTargets, self.ClientDummy, self.Log)
         self.stableMix = [False for i in range(self.n_mixes_per_layer*self.n_layers)]  # only start attack after mixes are stable
         self.stableChains = [False for i in range(1,1+6)]  # only start attack after chains are stable
-        print("stable chains", self.stableChains[4])
         self.stableMixL1 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
         self.stableMixL2 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
         self.stableMixL3 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
@@ -121,9 +121,21 @@ class Simulation(object):
                 client.otherClients = self.clientsSet - {client}
         elif self.topology == 'XRD':
             groups_lists = XRD_New(self.network.ListCascades)
-            for n_client in range(self.n_clients):
-                g = random.choice(groups_lists)
-                client = Client.Client(self, n_client, g, self.rate_client, self.mu,
+            n_group_client = self.n_clients // len(groups_lists)
+            for n_client in range(n_group_client):
+                client = Client.Client(self, n_client, groups_lists[0], self.rate_client, self.mu,
+                                       probabilityDistribution, numberTargets, ClientDummy, Log)
+                self.clientsSet.add(client)
+            for n_client in range(n_group_client, n_group_client*2):
+                client = Client.Client(self, n_client, groups_lists[1], self.rate_client, self.mu,
+                                       probabilityDistribution, numberTargets, ClientDummy, Log)
+                self.clientsSet.add(client)
+            for n_client in range(n_group_client*2, n_group_client*3):
+                client = Client.Client(self, n_client, groups_lists[2], self.rate_client, self.mu,
+                                       probabilityDistribution, numberTargets, ClientDummy, Log)
+                self.clientsSet.add(client)
+            for n_client in range(n_group_client*3, self.n_clients):
+                client = Client.Client(self, n_client, groups_lists[3], self.rate_client, self.mu,
                                        probabilityDistribution, numberTargets, ClientDummy, Log)
                 self.clientsSet.add(client)
 
@@ -257,6 +269,10 @@ class Simulation(object):
         for item in Client.tableAverageDelay:
             avg_delay+= item
         avg_delay = avg_delay/len(Client.tableAverageDelay)
+        avg_delayLog = 0
+        for re, le in zip(self.Log.received_messages["MessageTimeReceived"],self.Log.received_messages["MessageTimeLeft"]) :
+            avg_delayLog += (re - le)
+        avg_delayLogN = avg_delayLog / len(self.Log.received_messages)
         if self.printing:
             print('----------Simulation Stats----------')
             #print('Average Latency: {}'.format(latency))
@@ -266,5 +282,7 @@ class Simulation(object):
             print('Number of Total messages dropped', len(self.MsgsDropped))
             print('Number of Dummy messages dropped', len(self.Log.dummy_messages["DummyID"]))
             print("Average delay per message",avg_delay)
+            print("Average delay per message Log",avg_delayLogN)
+            print("Average delay per message Log",avg_delay)
 
         return ent, entropy_mean, entropy_median, entropy_q25, meanEps, delta
