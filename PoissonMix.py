@@ -20,6 +20,8 @@ class PoissonMix(Mix):
         self.prob = prob
         self.pool_dummies = []
         if self.RateDummies is not None and not self.corrupt and self.layer != self.simulation.n_layers:
+            print("holaaaaaaaaaaaaaaaaaaaaaa")
+
             self.env.process(self.sendDummiesRate())
 
     def receive_msg(self, msg):
@@ -29,13 +31,14 @@ class PoissonMix(Mix):
             lambdaClient = self.simulation.rate_client
             n = self.simulation.n_mixes_per_layer
             var1 = len(self.pool) >= ((clients * lambdaClient / n) * self.simulation.mu) * self.prob
+
             if self.simulation.topology == 'stratified':
-                  # average poolsize
-                if var1:
+
+                if var1 and self.layer == 1:
                     self.env.process(self.simulation.setStableMix(self.id - 1))
-                if all(self.simulation.stableMixL1):
-                    for i in range(len(self.simulation.stableMix)):
-                        self.simulation.setStableMix(i)
+                # if all(self.simulation.stableMixL1):
+                #     for i in range(len(self.simulation.stableMix)):
+                #         self.simulation.setStableMix(i)
             elif self.simulation.topology == 'XRD':
                 if var1:
                     self.env.process(self.simulation.setStableChain(self.n_chain))

@@ -61,9 +61,15 @@ class Client:
                     tmp_route.append(node)
                     Tmp.append(node.id)
                 else:
-                    node = np.random.choice(self.layerDict[layer], p=self.probabilityDistribution[layer - 1])
-                    tmp_route.append(node)
-                    Tmp.append(node.id)
+                    if layer == 1:
+                        node = np.random.choice(self.layerDict[layer], p=self.probabilityDistribution[layer - 1])
+                        tmp_route.append(node)
+                        Tmp.append(node.id)
+                    else:
+                        node = np.random.choice(node.neighbors)
+                        tmp_route.append(node)
+                        Tmp.append(node.id)
+
 
             elif self.simulation.routing == 'source' and self.simulation.topology == 'freeroute'\
                     or (self.simulation.routing == 'hopbyhop' and self.simulation.topology == 'freeroute' and layer == 1):
@@ -115,29 +121,17 @@ class Client:
 
 
     def receive_msg(self, msg):
-        # if msg.type != 'Malicious Dummy':
-            if msg.sender.id ==1 or msg.sender.id == 2:
-                self.log.MessagesLD(msg)
-            msg.timeReceived = self.env.now
-            self.log.ReceivedMessage(msg)
-            if self.simulation.mix_type == 'poisson':
-                self.delay.append(self.env.now - msg.timeLeft)
-            elif self.simulation.mix_type == 'time':
-                self.delay.append(self.env.now - msg.timeLeft)
-            else:
-                self.delay.append(self.env.now - msg.timeLeft)
-            d = self.env.now - msg.timeLeft
+        msg.timeReceived = self.env.now
+        self.log.ReceivedMessage(msg)
+        if msg.tag:
+            global targetProbability
+            self.simulation.TargetMessageEnd = True
+            targetProbability = msg.target
+            if self.simulation.printing:
+                print(f'Target message arrived at destination Client at time {self.env.now}')
+        if msg.type == 'Real' or msg.type == 'ClientDummy':
+            msg.route[0].receiveAck(msg)
 
-
-            self.tableAverageDelay.append(d)
-            if msg.tag:
-                global targetProbability
-                self.simulation.TargetMessageEnd = True
-                targetProbability = msg.target
-                if self.simulation.printing:
-                    print(f'Target message arrived at destination Client at time {self.env.now}')
-            if msg.type == 'Real' or msg.type == 'ClientDummy':
-                msg.route[0].receiveAck(msg)
 
     def sendMessages(self, msgtype, rate):
         while True:

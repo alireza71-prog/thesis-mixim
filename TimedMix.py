@@ -52,8 +52,8 @@ class TimedMix(Mix):
                 self.env.process(self.simulation.attacker.relay(msg, nextStop, self))
 
             self.pool.clear()
-            if not self.simulation.stableMix:  # send dummy if mix has flushed once
-                self.simulation.stableMix = True
+            # if not self.simulation.stableMix:  # send dummy if mix has flushed once
+            #     self.simulation.stableMix = True
 
     def computeProba(self, msg, poolsize):
         if not self.corrupt:

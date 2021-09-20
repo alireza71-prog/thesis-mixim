@@ -27,7 +27,7 @@ MsgsDropped = []
 dummyID = []
 class Simulation(object):
 
-    def __init__(self, rate_client, topology, mix_type, printing,n_clients, flushPercent, logging, flushtime,
+    def __init__(self, rate_client, topology, fully_connected, mix_type, printing,n_clients, flushPercent, logging, flushtime,
                  n_layers, mu, capacity, bandwidth, ClientDummy,LinkDummies, RateDummies,
                  n_mixes_per_layer, corrupt,UniformCorruption,probabilityMixes, simDuration,nbr_cascacdes, Network_template,
                  routing):
@@ -36,6 +36,7 @@ class Simulation(object):
         self.logging=logging
         self.printing= printing
         self.topology = topology
+        self.fully_connected = fully_connected
         self.LinkDummies = LinkDummies
         self.n_cascades=nbr_cascacdes
         self.ClientDummy = ClientDummy
@@ -69,15 +70,13 @@ class Simulation(object):
         else:
             self.numberTargets = int((self.SimDuration - self.flushtime-1)/2)
         self.network = Network(self.mix_type, self.n_layers, self.n_mixes_per_layer,self.corrupt,self.UniformCorruption, self, self.capacity, self.flushthreshold,
-                                        self.flushPercent, self.topology, self.flushtime,self.probabilityMixes, self.n_cascades, self.LinkDummies, self.RateDummies,
+                                        self.flushPercent, self.topology,fully_connected, self.flushtime,self.probabilityMixes, self.n_cascades, self.LinkDummies, self.RateDummies,
                                         Network_template, self.numberTargets)
 
         self.setupClients(self.probabilityMixes, self.numberTargets, self.ClientDummy, self.Log)
-        self.stableMix = [False for i in range(self.n_mixes_per_layer*self.n_layers)]  # only start attack after mixes are stable
+        # self.stableMix = [False for i in range(self.n_mixes_per_layer*self.n_layers)]  # only start attack after mixes are stable
         self.stableChains = [False for i in range(1,1+6)]  # only start attack after chains are stable
         self.stableMixL1 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
-        self.stableMixL2 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
-        self.stableMixL3 = [False for i in range(self.n_mixes_per_layer)]  # only start attack after mixes are stable
         self.attacker = Attacker(self, self.numberTargets)  # attacker/relay object
         self.endEvent = self.env.event()  # event that triggers the end of the simulation
         self.TargetMessageEnd = False  # if target message has reached the end client
@@ -89,8 +88,11 @@ class Simulation(object):
         if self.mix_type =='pool':
             yield self.env.timeout(10)
             self.startAttack = True
-        self.stableMix[index] = True
-        if all(self.stableMix):
+        elif self.mix_type == 'time':
+            yield self.env.timeout(self.flushtime + 5)
+            self.startAttack = True
+        self.stableMixL1[index] = True
+        if all(self.stableMixL1):
             yield self.env.timeout(2)
             self.startAttack = True
         #else:
@@ -235,13 +237,13 @@ class Simulation(object):
             df_LD.to_csv(f'{logDir}LD.csv')
         else:
             pass
-        dataS1 = df_LD['PrS1']
-        dataS2 = df_LD['PrS2']
-        dataRealSenders = df_LD['RealSender']
-        (epsilon, meanEps, stdEps, delta) =self.getUnlinkability(dataS1, dataS2, dataRealSenders)
-        dict6 = {'Epsilon': epsilon}
-        df6 = pd.DataFrame(dict6)
-        df6.to_csv(f'{logDir}{self.n_layers}Epsilon.csv')
+        # dataS1 = df_LD['PrS1']
+        # dataS2 = df_LD['PrS2']
+        # dataRealSenders = df_LD['RealSender']
+        # (epsilon, meanEps, stdEps, delta) =self.getUnlinkability(dataS1, dataS2, dataRealSenders)
+        # dict6 = {'Epsilon': epsilon}
+        # df6 = pd.DataFrame(dict6)
+        # df6.to_csv(f'{logDir}{self.n_layers}Epsilon.csv')
 
         ent = []
         for i in range(0, self.numberTargets):
@@ -255,7 +257,7 @@ class Simulation(object):
 
         dict_entropy = {'Entropy': ent}
         df_entropy = pd.DataFrame(dict_entropy)
-        df_entropy.to_csv(f'{logDir}{self.n_mixes_per_layer}Entropy.csv')
+        df_entropy.to_csv(f'{logDir}{self.n_layers}Entropy.csv')
 
         entropy_mean = np.mean(ent)
         try:
@@ -265,14 +267,10 @@ class Simulation(object):
             entropy_median = 0
             entropy_q25 = 0
 
-        avg_delay=0
-        for item in Client.tableAverageDelay:
-            avg_delay+= item
-        avg_delay = avg_delay/len(Client.tableAverageDelay)
         avg_delayLog = 0
         for re, le in zip(self.Log.received_messages["MessageTimeReceived"],self.Log.received_messages["MessageTimeLeft"]) :
             avg_delayLog += (re - le)
-        avg_delayLogN = avg_delayLog / len(self.Log.received_messages)
+        avg_delayLogN = avg_delayLog / len(self.Log.received_messages["MessageTimeReceived"])
         if self.printing:
             print('----------Simulation Stats----------')
             #print('Average Latency: {}'.format(latency))
@@ -281,8 +279,6 @@ class Simulation(object):
             print('Number of Real messages Received', len(self.Log.received_messages["MessageID"]))
             print('Number of Total messages dropped', len(self.MsgsDropped))
             print('Number of Dummy messages dropped', len(self.Log.dummy_messages["DummyID"]))
-            print("Average delay per message",avg_delay)
-            print("Average delay per message Log",avg_delayLogN)
-            print("Average delay per message Log",avg_delay)
+            print("Average delay per message",avg_delayLogN)
 
-        return ent, entropy_mean, entropy_median, entropy_q25, meanEps, delta
+        return ent, entropy_mean, entropy_median, entropy_q25
