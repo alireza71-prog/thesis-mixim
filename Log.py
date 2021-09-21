@@ -4,7 +4,6 @@ class Log:
         self.sent_messages = {"MessageID": [], "MessageType": [], "MessageTimeLeft" :[], "MessageDelay": [], "MessageRoute" :[]}
         self.received_messages = {"MessageID": [], "MessageType": [], "MessageTimeLeft" :[],"MessageTimeReceived":[], "MessageDelay": [], "MessageRoute" :[],"MessageTarget" : [] }
         self.dummy_messages = {"DroppingNode":[],"DummyID": [], "DummyType": [], "DummyTimeLeft" :[], "DummyDelay": [], "DummyRoute" :[], "DummyPr":[]}
-        self.mix_data = {"MessageID": [], "MessageType": [],"MessageTag": [], "MessageTarget": [],"MessageTime_L": [], "MessageTime_R": [], "Len": []}
     def Dummies_Dropped_end_link(self, dummy, dropping_node):
         self.dummy_messages["DroppingNode"].append(dropping_node)
         self.dummy_messages["DummyID"].append(dummy.id)
@@ -30,12 +29,3 @@ class Log:
         self.received_messages["MessageDelay"].append(msg.delay)
         self.received_messages["MessageRoute"].append(msg.route)
         self.received_messages["MessageTarget"].append(msg.target)
-
-    def MixData(self, msg, time_left, nbr):
-        self.mix_data["MessageID"].append(msg.id)
-        self.mix_data["MessageType"].append(msg.type)
-        self.mix_data["MessageTarget"].append(msg.tablePr)
-        self.mix_data["MessageTag"].append(msg.tag)
-        self.mix_data["MessageTime_L"].append(time_left)
-        self.mix_data["MessageTime_R"].append(msg.time_received)
-        self.mix_data["Len"].append(nbr)

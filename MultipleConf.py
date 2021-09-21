@@ -89,10 +89,8 @@ if __name__ == "__main__":
         # table_delta_epsilon.append(item[5])
     print("Entropy", table_entropy)
     print("Mean Entropy", table_mean_entropy)
-    print("Mediane Entropy", table_median_entropy)
-    print("Quanile Entropy 0.25", table_q25_entropy)
-    # print("Mean Epsilon", table_epsilon)
-    # print("Delta Epsilon", table_delta_epsilon)
+    print("Median Entropy", table_median_entropy)
+    print("Quantile Entropy 0.25", table_q25_entropy)
 
 
 

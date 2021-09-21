@@ -2,15 +2,7 @@ from random import choice, sample
 from Message import Message
 from numpy.random import exponential
 import numpy as np
-from Log import Log
 import random
-from array import array
-
-ProbabilitiesEntropy = []
-delayTable = []  # total latency of a message
-tableAverageDelay = []  # IDs of message received
-tableType = []  # IDs of message received
-targetProbability = 0  # Probability of taget message when it arrives at its destination
 
 class Client:
     def __init__(self, simulation, id, topology, rateC, mu, probabilityDistribution, numberTargets, ClientDummy, Log):
@@ -23,9 +15,7 @@ class Client:
         self.probabilityDistribution = probabilityDistribution
         self.otherClients = set()
         self.messageIDs = 1
-        self.delay = delayTable
 
-        self.tableAverageDelay = tableAverageDelay
         self.rateC = rateC
         self.allMixes = []
         self.numbertargets=numberTargets
@@ -46,7 +36,6 @@ class Client:
         tmp_route = [self]
         Tmp = [self.id]
         delay = [delayC]
-        tablePr= []
         target = []
 
         for i in range(0, self.numbertargets):
@@ -96,7 +85,7 @@ class Client:
         tmp_route += [receiver]
         Tmp += [receiver.id]
 
-        msg = Message(self.messageIDs, Msgtype, self, tmp_route, delay, target,False, tablePr)
+        msg = Message(self.messageIDs, Msgtype, self, tmp_route, delay, target,False)
         if self.messageIDs == 1 and self.id ==1:
             for i in range(len(self.probabilityDistribution)):
                 if self.simulation.printing:
@@ -111,12 +100,8 @@ class Client:
     def receive_msg(self, msg):
         msg.timeReceived = self.env.now
         self.log.ReceivedMessage(msg)
-        if msg.tag:
-            global targetProbability
-            self.simulation.TargetMessageEnd = True
-            targetProbability = msg.target
-            if self.simulation.printing:
-                print(f'Target message arrived at destination Client at time {self.env.now}')
+        if msg.tag and self.simulation.printing:
+            print(f'Target message arrived at destination Client at time {self.env.now}')
         if msg.type == 'Real' or msg.type == 'ClientDummy':
             msg.route[0].receiveAck(msg)
 

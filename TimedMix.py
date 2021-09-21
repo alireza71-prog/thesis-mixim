@@ -62,13 +62,11 @@ class TimedMix(Mix):
                     for i in range(0, self.numberTargets):
                         msg.target[i] = self.Pmix[i] / self.NumberOfrealMessages
                         self.Pmix[i] = self.Pmix[i] - msg.target[i]
-                    msg.tablePr.append(msg.target[0])
                     self.NumberOfrealMessages -= 1
 
                 else:
                     for j in range(0, self.numberTargets):
                         msg.target[j] = self.Pmix[j] / poolsize
-                        msg.tablePr.append(msg.target[j])
                         self.Pmix[j] = self.Pmix[j] - msg.target[j]
 
     def sendDummies(self):

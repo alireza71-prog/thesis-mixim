@@ -72,16 +72,11 @@ class PoissonMix(Mix):
         self.simulation.MsgsDropped.append(msg.id)
 
     def DropDummies(self, msg):
-        if self.layer == 3:
+        if self.layer == self.simulation.n_layers:
             self.simulation.Log.Dummies_Dropped_end_link( msg, self.id)
         #self.pool.remove(msg)
 
-    def uncertainMessage(self, msg):
-        # returns True if this messages adds entropy to the attacker
 
-        if msg.type == 'Malicious Dummy':
-            return False
-        return True
 
     def send_msg(self, msg):
         yield self.env.timeout(msg.delay[self.layer])
@@ -99,13 +94,10 @@ class PoissonMix(Mix):
 
     def computeProba(self, msg, poolsize):
         if not self.corrupt:
-            if self.uncertainMessage(msg):  # Returns False if the message is a Malicious dummy sent by the attacker and the mix is corrupted
-                for j in range(0, self.numberTargets):
-                    msg.target[j] = self.Pmix[j] / poolsize
-                    msg.tablePr.append(msg.target[j])
-                    self.Pmix[j] = self.Pmix[j] - msg.target[j]
-                msg.sender_estimate = [x / poolsize for x in self.sender_estimate]
-                self.sender_estimate = [x - y for x, y in zip(self.sender_estimate, msg.sender_estimate)]
+            for j in range(0, self.numberTargets):
+                msg.target[j] = self.Pmix[j] / poolsize
+                self.Pmix[j] = self.Pmix[j] - msg.target[j]
+
 
     def sendDummiesRate(self):
         dummy_id = 1

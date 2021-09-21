@@ -22,9 +22,7 @@ from util import Capacity
 import math
 DEFAULT_TOPOLOGY = 'stratified'
 logDir = 'Logs/'
-dummyDropped = []
-MsgsDropped = []
-dummyID = []
+
 class Simulation(object):
 
     def __init__(self, rate_client, topology, fully_connected, mix_type, printing,n_clients, flushPercent, logging, flushtime,
@@ -59,9 +57,9 @@ class Simulation(object):
         self.SimDuration = simDuration
         self.flushtime = flushtime
         self.numberTargets =0
-        self.MsgsDropped = MsgsDropped
-        self.dummyDropped = dummyDropped
-        self.dummyID = dummyID
+        self.MsgsDropped = []
+
+        self.dummyID = 0
         time_stable = ((1/self.rate_client)/self.n_layers)*self.mu+2
         if self.mix_type == 'poisson':
             self.numberTargets = int(((self.SimDuration-time_stable)*0.5)/2)
@@ -90,7 +88,7 @@ class Simulation(object):
         elif self.mix_type == 'time':
             yield self.env.timeout(self.flushtime + 5)
             self.startAttack = True
-        # self.stableMixL1[index] = True
+        self.stableMixL1[index] = True
         if all(self.stableMixL1):
             yield self.env.timeout(2)
             self.startAttack = True
@@ -198,13 +196,11 @@ class Simulation(object):
         df_sent_messages = pd.DataFrame(self.Log.sent_messages)
         df_received_messages = pd.DataFrame(self.Log.received_messages)
         df_dummies_messages = pd.DataFrame(self.Log.dummy_messages)
-        df_mix_data = pd.DataFrame(self.Log.mix_data)
 
         if self.logging:
             df_sent_messages.to_csv(f'{logDir}SentMessages.csv')
             df_received_messages.to_csv(f'{logDir}ReceivedMessages.csv')
             df_dummies_messages.to_csv(f'{logDir}DummyMessages.csv')
-            df_mix_data.to_csv(f'{logDir}MixData.csv')
         else:
             pass
 
@@ -220,7 +216,7 @@ class Simulation(object):
 
         dict_entropy = {'Entropy': ent}
         df_entropy = pd.DataFrame(dict_entropy)
-        df_entropy.to_csv(f'{logDir}{self.n_layers}Entropy.csv')
+        df_entropy.to_csv(f'{logDir}{self.n_layers}layers_{self.n_mixes_per_layer}mixes_player_Entropy.csv')
 
         entropy_mean = np.mean(ent)
         try:

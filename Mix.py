@@ -33,9 +33,7 @@ class Mix:
 
         for i in range(0, self.numberTargets):
             self.Pmix.append(float(0.0))
-        self.sender_estimate =[0.0,0.0, 0.0]
         self.NumberOfrealMessages=0
-        self.NumberOfDummies = 0
 
     def createDummiesRate(self, dummyNb):
         layerDict = self.simulation.network.LayerDict
@@ -58,11 +56,10 @@ class Mix:
         target = []
         for j in range(0, self.numberTargets):
             target.append(float(0.0))
-        newDummy = Message(dummyNb, 'Dummy', self, route, delaylist, target, False, tablePR)
+        newDummy = Message(dummyNb, 'Dummy', self, route, delaylist, target, False)
 
         newDummy.nextStopIndex = self.layer + 1
         newDummy.id = f'd_{self.id}_{dummyNb}'
-        self.simulation.dummyID.append(newDummy.id)
         return newDummy
 
     def __str__(self):
