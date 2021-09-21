@@ -1,6 +1,5 @@
 from Simulation import Simulation
 import time
-import pickle
 from multiprocessing import Pool
 from util import Capacity
 from util import Weights

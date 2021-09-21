@@ -20,8 +20,6 @@ class PoissonMix(Mix):
         self.prob = prob
         self.pool_dummies = []
         if self.RateDummies is not None and not self.corrupt and self.layer != self.simulation.n_layers:
-            print("holaaaaaaaaaaaaaaaaaaaaaa")
-
             self.env.process(self.sendDummiesRate())
 
     def receive_msg(self, msg):
@@ -50,7 +48,6 @@ class PoissonMix(Mix):
 
             for i in range(0, self.numberTargets):
                 self.Pmix[i] += msg.target[i]
-            self.sender_estimate = [x+y for x,y in zip(self.sender_estimate, msg.sender_estimate)]
             if msg.tag and self.simulation.printing:
                 print(f'Target message arrived at mix {self.id} at time {self.env.now} and Number of real messages{len(self.pool)} and number of dummies{len(self.pool_dummies)}')
             msg.nextStopIndex += 1

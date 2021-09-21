@@ -2,10 +2,9 @@
 class Log:
     def __init__(self):
         self.sent_messages = {"MessageID": [], "MessageType": [], "MessageTimeLeft" :[], "MessageDelay": [], "MessageRoute" :[]}
-        self.received_messages = {"MessageID": [], "MessageType": [], "MessageTimeLeft" :[],"MessageTimeReceived":[], "MessageDelay": [], "MessageRoute" :[],"MessageTarget" : [],"PrS1": [], "PrS2": [], "RealSender": [] }
+        self.received_messages = {"MessageID": [], "MessageType": [], "MessageTimeLeft" :[],"MessageTimeReceived":[], "MessageDelay": [], "MessageRoute" :[],"MessageTarget" : [] }
         self.dummy_messages = {"DroppingNode":[],"DummyID": [], "DummyType": [], "DummyTimeLeft" :[], "DummyDelay": [], "DummyRoute" :[], "DummyPr":[]}
         self.mix_data = {"MessageID": [], "MessageType": [],"MessageTag": [], "MessageTarget": [],"MessageTime_L": [], "MessageTime_R": [], "Len": []}
-        self.messages_indis = {"MessageID": [],"PrS1": [], "PrS2": [], "RealSender": [], "Sampling": []}
     def Dummies_Dropped_end_link(self, dummy, dropping_node):
         self.dummy_messages["DroppingNode"].append(dropping_node)
         self.dummy_messages["DummyID"].append(dummy.id)
@@ -31,18 +30,6 @@ class Log:
         self.received_messages["MessageDelay"].append(msg.delay)
         self.received_messages["MessageRoute"].append(msg.route)
         self.received_messages["MessageTarget"].append(msg.target)
-        self.received_messages["PrS1"].append(msg.sender_estimate[0])
-        self.received_messages["PrS2"].append(msg.sender_estimate[1])
-        self.received_messages["RealSender"].append(msg.sender.id)
-    def MessagesLD(self, msg):
-        if msg.sampling:
-            self.messages_indis["MessageID"].append(msg.id)
-            self.messages_indis["PrS1"].append(msg.sender_estimate[0])
-            self.messages_indis["PrS2"].append(msg.sender_estimate[1])
-            self.messages_indis["RealSender"].append(msg.sender.id)
-            self.messages_indis["Sampling"].append(msg.sampling)
-        else:
-            pass
 
     def MixData(self, msg, time_left, nbr):
         self.mix_data["MessageID"].append(msg.id)

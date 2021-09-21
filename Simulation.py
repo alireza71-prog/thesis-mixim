@@ -48,7 +48,6 @@ class Simulation(object):
         self.rate_client = rate_client  # average delay between messages being sent from client
         self.flushthreshold = bandwidth
         self.mu = mu  # average delay at poisson mixes
-        print("self.mu", self.mu)
         self.n_layers = n_layers
         self.n_mixes_per_layer = n_mixes_per_layer
         self.corrupt = corrupt
@@ -91,7 +90,7 @@ class Simulation(object):
         elif self.mix_type == 'time':
             yield self.env.timeout(self.flushtime + 5)
             self.startAttack = True
-        self.stableMixL1[index] = True
+        # self.stableMixL1[index] = True
         if all(self.stableMixL1):
             yield self.env.timeout(2)
             self.startAttack = True
@@ -144,33 +143,6 @@ class Simulation(object):
             for client in self.clientsSet:
                 client.otherClients = self.clientsSet - {client}
 
-    def getUnlinkability(self, est_senderA, est_senderB, realSenderLabel):
-        epsilon = []
-        dlts = 0
-
-        for (prA, prB, label) in zip(est_senderA, est_senderB, realSenderLabel):
-            if label == 1:
-                if not float(prB) == 0.0:
-                    ratio = float(prA) / float(prB)
-                    if not ratio == 0.0:
-                        epsilon.append(abs(math.log(ratio)))
-                else:
-                    dlts += 1
-            elif label == 2:
-                if not float(prA) == 0.0:
-                    ratio = float(prB) / float(prA)
-                    if not ratio == 0.0:
-                        epsilon.append(abs(math.log(ratio)))
-                else:
-                    dlts += 1
-            else:
-                pass
-
-        meanEps = np.abs(np.mean(epsilon)) if epsilon != [] else None
-        stdEps = np.std(epsilon) if epsilon != [] else None
-        delta = float(dlts) / float(len(est_senderA))
-
-        return (epsilon, meanEps, stdEps, delta)
 
     def run(self, time=None):
         # Print statements and results from here
@@ -227,23 +199,14 @@ class Simulation(object):
         df_received_messages = pd.DataFrame(self.Log.received_messages)
         df_dummies_messages = pd.DataFrame(self.Log.dummy_messages)
         df_mix_data = pd.DataFrame(self.Log.mix_data)
-        df_LD = pd.DataFrame(self.Log.messages_indis)
 
         if self.logging:
             df_sent_messages.to_csv(f'{logDir}SentMessages.csv')
             df_received_messages.to_csv(f'{logDir}ReceivedMessages.csv')
             df_dummies_messages.to_csv(f'{logDir}DummyMessages.csv')
             df_mix_data.to_csv(f'{logDir}MixData.csv')
-            df_LD.to_csv(f'{logDir}LD.csv')
         else:
             pass
-        # dataS1 = df_LD['PrS1']
-        # dataS2 = df_LD['PrS2']
-        # dataRealSenders = df_LD['RealSender']
-        # (epsilon, meanEps, stdEps, delta) =self.getUnlinkability(dataS1, dataS2, dataRealSenders)
-        # dict6 = {'Epsilon': epsilon}
-        # df6 = pd.DataFrame(dict6)
-        # df6.to_csv(f'{logDir}{self.n_layers}Epsilon.csv')
 
         ent = []
         for i in range(0, self.numberTargets):

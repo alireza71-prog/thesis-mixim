@@ -1,5 +1,5 @@
 class Message:
-    def __init__(self, id, type, sender, route, delay, target, tag, tablePr, sender_estimate):
+    def __init__(self, id, type, sender, route, delay, target, tag, tablePr):
         self.id = "%d_%d" % (sender.id, id)
         self.type = type  # Dummy or Real packet
         self.sender = sender  # sender object
@@ -10,4 +10,3 @@ class Message:
         self.timeLeft = 0
         self.nextStopIndex = 1
         self.tablePr = tablePr #an array of probabilities of the message being the target after each hop
-        self.sender_estimate = sender_estimate

@@ -95,20 +95,8 @@ class Client:
         receiver = sample(self.otherClients, k=1)[0]
         tmp_route += [receiver]
         Tmp += [receiver.id]
-        if self.simulation.startAttack:
-            sampling = True
-            if self.id == 1:
-                sender_estimate = [1.0,0.0,0.0]
-            elif self.id == 2 :
-                sender_estimate = [0.0,1.0,0.0]
-            else:
-                sender_estimate = [0.0,0.0,1.0]
-        else:
-            sender_estimate = [0.0, 0.0, 1.0]
-            sampling = False
 
-        msg = Message(self.messageIDs, Msgtype, self, tmp_route, delay, target,False, tablePr, sender_estimate)
-        msg.sampling =sampling
+        msg = Message(self.messageIDs, Msgtype, self, tmp_route, delay, target,False, tablePr)
         if self.messageIDs == 1 and self.id ==1:
             for i in range(len(self.probabilityDistribution)):
                 if self.simulation.printing:

@@ -58,8 +58,7 @@ class Mix:
         target = []
         for j in range(0, self.numberTargets):
             target.append(float(0.0))
-        sender_estimate = [0.0, 0.0, 1.0]
-        newDummy = Message(dummyNb, 'Dummy', self, route, delaylist, target, False, tablePR, sender_estimate)
+        newDummy = Message(dummyNb, 'Dummy', self, route, delaylist, target, False, tablePR)
 
         newDummy.nextStopIndex = self.layer + 1
         newDummy.id = f'd_{self.id}_{dummyNb}'
