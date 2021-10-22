@@ -1,4 +1,4 @@
-LINK_DELAY = 0.0
+LINK_DELAY = 0.5
 timeStable = 0.0
 event = []  # what happens: attacker can generate malicious dummies or drop real messages
 objID = []  # the id of message or mix
