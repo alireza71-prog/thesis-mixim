@@ -1,7 +1,6 @@
 import math
 import numpy as np
 import itertools
-from multiprocessing import Pool
 
 
 def combinatoire(a,b):

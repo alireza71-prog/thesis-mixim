@@ -5,116 +5,116 @@ import numpy as np
 import random
 
 class Client:
-    def __init__(self, simulation, id, topology, rateC, mu, probabilityDistribution, numberTargets, ClientDummy, Log):
+    def __init__(self, simulation, id, network_dict, rate_client, mu, probability_dist_mixes, n_targets, client_dummies, rate_client_dummies, Log):
         self.id = id
         self.env = simulation.env
         self.simulation = simulation  # simulation object
-        self.layerDict = topology
+        self.network_dict = network_dict
         self.class_ends = self.env.event()
         self.mu = mu  # Avg delay: for delays at the poisson mixes
-        self.probabilityDistribution = probabilityDistribution
-        self.otherClients = set()
-        self.messageIDs = 1
+        self.probability_dist_mixes = probability_dist_mixes
+        self.other_clients = set()
+        self.message_id = 1
 
-        self.rateC = rateC
-        self.allMixes = []
-        self.numbertargets=numberTargets
-        self.ClientDummy = ClientDummy
+        self.rate_client = rate_client
+        self.all_mixes = []
+        self.n_targets = n_targets
+        self.client_dummies = client_dummies
+        self.rate_client_dummies = rate_client_dummies
         self.log = Log
         if self.simulation.topology == 'stratified':
-            for layer in range(1, len(self.layerDict) + 1):
-                self.allMixes += self.layerDict[layer]
+            for layer in range(1, len(self.network_dict) + 1):
+                self.all_mixes += self.network_dict[layer]
         elif self.simulation.topology == 'XRD':
-            self.set_chains = self.layerDict
-        self.env.process(self.sendMessages('Real', self.rateC))
-        if self.ClientDummy is not None:
-            self.env.process(self.sendMessages('ClientDummy', self.ClientDummy))
+            self.set_chains = self.network_dict
+        self.env.process(self.send_message('Real', self.rate_client))
+        if self.client_dummies:
+            self.env.process(self.send_message('ClientDummy', self.rate_client_dummies))
 
-    def createMessage(self, Msgtype, rate):
+    def create_message(self, message_type, rate_client):
         np.random.seed()
-        delayC = exponential(rate)
-        tmp_route = [self]
-        Tmp = [self.id]
-        delay = [delayC]
-        target = []
+        delay_client = exponential(rate_client)
+        route = [self]
+        route_ids = [self.id]
+        delays = [delay_client]
+        pr_target = []
 
-        for i in range(0, self.numbertargets):
-            target.append(float(0.0))
+        for i in range(0, self.n_targets):
+            pr_target.append(float(0.0))
         for layer in range(1, self.simulation.n_layers+1):
             delay_per_mix = exponential(self.mu)
-            delay.append(delay_per_mix)
+            delays.append(delay_per_mix)
             if self.simulation.routing == 'source' and self.simulation.topology == 'stratified'\
                     or (self.simulation.routing == 'hopbyhop' and self.simulation.topology == 'stratified' and layer == 1):
                 if self.simulation.n_layers ==1 and self.simulation.n_mixes_per_layer == 1:
-                    node = self.layerDict[1][0]
-                    tmp_route.append(node)
-                    Tmp.append(node.id)
+                    node = self.network_dict[1][0]
+                    route.append(node)
+                    route_ids.append(node.id)
                 else:
                     if layer == 1:
-                        node = np.random.choice(self.layerDict[layer], p=self.probabilityDistribution[layer - 1])
-                        tmp_route.append(node)
-                        Tmp.append(node.id)
+                        node = np.random.choice(self.network_dict[layer], p=self.probability_dist_mixes[layer - 1])
+                        route.append(node)
+                        route_ids.append(node.id)
                     else:
                         node = np.random.choice(node.neighbors)
-                        tmp_route.append(node)
-                        Tmp.append(node.id)
+                        route.append(node)
+                        route_ids.append(node.id)
 
 
             elif self.simulation.routing == 'source' and self.simulation.topology == 'freeroute'\
                     or (self.simulation.routing == 'hopbyhop' and self.simulation.topology == 'freeroute' and layer == 1):
 
-                node = choice(self.allMixes)
-                while node in tmp_route:
-                    node = choice(self.allMixes)
-                tmp_route.append(node)
-                Tmp.append(node.id)
+                node = choice(self.all_mixes)
+                while node in route:
+                    node = choice(self.all_mixes)
+                route.append(node)
+                route_ids.append(node.id)
 
             elif self.simulation.routing == 'hopbyhop' and layer != 1:
-                tmp_route.append(None)
-                Tmp.append(None)
+                route.append(None)
+                route_ids.append(None)
             elif self.simulation.routing == 'source' and self.simulation.topology == 'XRD':
                 chain = random.choice(self.set_chains)
-                print("chain", chain)
-                tmp_route = [self]
-                Tmp = [self.id]
+                route = [self]
+                route_ids = [self.id]
                 for node in chain:
-                    tmp_route.append(node)
-                    Tmp.append((node.id))
-        delay += [0]
-        receiver = sample(self.otherClients, k=1)[0]
-        tmp_route += [receiver]
-        Tmp += [receiver.id]
+                    route.append(node)
+                    route_ids.append((node.id))
+        delays += [0]
+        receiver = sample(self.other_clients, k=1)[0]
+        route += [receiver]
+        route_ids += [receiver.id]
 
-        msg = Message(self.messageIDs, Msgtype, self, tmp_route, delay, target,False)
-        if self.messageIDs == 1 and self.id ==1:
-            for i in range(len(self.probabilityDistribution)):
+        message = Message(self.message_id, message_type, self, route, delays, pr_target,False)
+        if self.message_id == 1 and self.id ==1:
+            for i in range(len(self.probability_dist_mixes)):
                 if self.simulation.printing:
-                    print("Weights Layer %d %s"%(i, self.probabilityDistribution))
+                    print("Weights Layer %d %s"%(i, self.probability_dist_mixes))
                 else:
                     pass
-        self.messageIDs += 1
-        return msg, delayC
+        self.message_id += 1
+        return message, delay_client
 
 
 
-    def receive_msg(self, msg):
-        msg.timeReceived = self.env.now
-        self.log.ReceivedMessage(msg)
-        if msg.tag and self.simulation.printing:
+    def receive_message(self, message):
+        message.timeReceived = self.env.now
+        self.log.received_messages_f(message)
+        if message.target_bool and self.simulation.printing:
             print(f'Target message arrived at destination Client at time {self.env.now}')
-        if msg.type == 'Real' or msg.type == 'ClientDummy':
-            msg.route[0].receiveAck(msg)
+        if message.type == 'Real' or message.type == 'ClientDummy':
+            message.route[0].receive_ack(message)
 
 
-    def sendMessages(self, msgtype, rate):
+    def send_message(self, message_type, rate_client):
         while True:
-            msg, delay = self.createMessage(msgtype, rate)
-            yield self.env.timeout(delay)
-            msg.timeLeft = self.env.now
-            self.log.SentMessage(msg)
-            self.env.process(self.simulation.attacker.relay(msg, msg.route[1], self))
+            message, sending_time = self.create_message(message_type, rate_client)
+            yield self.env.timeout(sending_time)
+            message.time_left = self.env.now
+            self.log.sent_messages_f(message)
+            self.env.process(self.simulation.attacker.relay(message, message.route[1]))
 
-    def receiveAck(self, msg):  # Message received
+    def receive_ack(self, message):  # Message received
         pass
 
     def __str__(self):
