@@ -47,7 +47,7 @@ class Simulation(object):
         self.routing = routing
         self.env = simpy.Environment()
         self.SimDuration = simDuration
-        self.burnout = self.SimDuration / 0.2
+        self.burnout = 10
         self.flush_timeout = flush_timeout
         self.n_targets = 0
         self.MsgsDropped = []
@@ -55,7 +55,7 @@ class Simulation(object):
         self.dummyID = 0
         time_stable = ((1 / self.rate_client) / self.n_layers) * self.mu + 2
         if self.mix_type == 'poisson':
-            self.n_targets = int(((self.SimDuration - time_stable) * 0.5) / 2)
+            self.n_targets = int(((self.SimDuration - time_stable) ) / 2)
         else:
             self.n_targets = int((self.SimDuration - self.flush_timeout - 1) / 4)
         self.network = Network(self.mix_type, self.n_layers, self.n_mixes_per_layer, self.corrupt,
